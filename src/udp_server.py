@@ -19,35 +19,46 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # bind server side socket to IP and PORT
 server_socket.bind((IP, PORT))
 
-# single game
-game = {
-    'id': False,
-    'red': False,      # not "connected"
-    'black': False,    # not "connected"
-    'moves': []
-}
+# available boards
+boards = []
+
+for index in range(5):
+    boards.append( {
+        'id': index + 1,
+        'red': False,      # not "connected"
+        'black': False,    # not "connected"
+        'moves': []
+    })
+
+
 
 # listen to incoming requests
-while game['red'] == False or game['black'] == False:
+while True:
     # receive request from client
     client_data, credentials = server_socket.recvfrom(BYTES)
     
     # parse client data
     client_data = json.loads(client_data.decode())
-    print('message:', client_data, credentials)
+    print('client:', client_data, credentials)
+    
+    # init game
+    try:
+        game = boards[int(client_data['gameId']) - 1]
+
+    except Exception as e:
+        print(e)
+        server_socket.sendto(b'board does not exist!', (credentials))
+        continue
     
     if client_data['move'] == 'connect':
         game[client_data['side']] = True
-        game['id'] = client_data['gameId']
+    elif client_data['move'] != 'get':
+        game['moves'].append(int(client_data['move']))
+        print('got move from UI')
     
     # send response to client
     server_socket.sendto(str.encode(json.dumps(game)), (credentials))
     print('sent response to client', credentials)
-    
-    # connection established
-    if game['red'] == True and game['black'] == True:
-        print('game', game['id'], 'connection has been established')
-        break
 
 # close socket
 server_socket.close()
