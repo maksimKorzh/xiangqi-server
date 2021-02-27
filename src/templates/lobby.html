@@ -37,49 +37,51 @@
                display: flex;
                justify-content: center;
                align-items: center;
-               height: 100vh;
                "
         
         class="img-fluid bg-cover text-center">
-
-    <div id="main">
-      <!-- Chess board view -->
-      <div id="xiangqiboard" 
-           style="border: 1px solid black;
-                  background: url(/static/game/images/boards/board-ccbridge.png);
-                  background-size: contain;"
-      ></div>
-    <div>
     
-    <!-- Xiangqi engine -->
-    <script src="/static/game/wukong.js"></script>
-    
-    <!-- Bots -->
-    <!--script src="/static/game/bots.js"></script-->
-
-    <!-- User input handling -->
-    <script src="/static/game/xiangqi.js"></script>
-    
-    <!-- DevTools detection -->
-    <script src="/static/libs/js/isdevtoolopen.js"> </script>
-    
-    <!-- Remove background image when DevTools are open -->
-    <script type="module">
-      // on update page when devtools are opened
-	  if (window.devtools.isOpen == 1) {
-        document.body.style.backgroundImage = '';
-      }
+    <div class="col-3">
+      <h1 class="mt-5 ">New game</h1>
       
-      // on devtools open/close
-	    window.addEventListener('devtoolschange', event => {
-	      if (window.devtools.isOpen == 0) {
-          document.body.style.backgroundImage = '';
-        } else if (window.devtools.isOpen == 1) {
-          document.body.style.backgroundImage = 'url(/static/game/images/misc/wallpaper.jpg)';
-        }
-      });	    
-    </script>
+      <ul id="boards" class="list-group"></ul>
+    </div>
+  
   </body>
-<html>
+  <script>
+    let boards = `
+      <li class="list-group-item mt-2">
+        Board %brdNum
+        <hr>
+        <a id="red_%brdNum" class="col btn btn-danger mb-1" href="/board/%brdNum?side=red">Join</a>
+        <a id="black_%brdNum" class="col btn btn-dark" href="/board/%brdNum?side=black">Join</a>
+      </li>
+    `
+    
+    // render games
+    for (let index = 1; index < 4; index++) {
+      document.getElementById('boards').innerHTML += boards.split('%brdNum').join(index);
+    }
+    
+    // get game status
+    for (let gameId = 1; gameId < 4; gameId++) {
+      $.get('/board?gameId=' + gameId + '&side=none&move=get', function(response) {
+        let parseResponse = JSON.parse(response);
+        console.log('UDP GET response:', parseResponse);
+        
+        // disable joining ongoing games
+        if (parseResponse.red == true) document.getElementById('red_' + gameId).classList.add('disabled');
+        if (parseResponse.black == true) document.getElementById('black_' + gameId).classList.add('disabled');
+      });
+    }
+
+  </script>
+</html>
+
+
+
+
+
+
 
 

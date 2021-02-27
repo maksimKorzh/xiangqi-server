@@ -104,7 +104,7 @@ function drawBoard() {
 
 // highlight legal moves
 function highlightMoves(square) {  
-  if (document.getElementById('showMoves').checked == false) return;
+  //if (document.getElementById('showMoves').checked == false) return;
   
   let legalMoves = engine.generateLegalMoves();
   
@@ -132,7 +132,7 @@ function setBot(bot) {
   fixedTime = bots[bot].time;
   fixedDepth = bots[bot].depth;
   book = JSON.parse(JSON.stringify(bots[bot].book));
-  document.getElementById('pgn').value = bots[bot].description;
+  //document.getElementById('pgn').value = bots[bot].description;
 }
 
 // set board theme
@@ -186,6 +186,10 @@ var repetitions = 0;
 
 // pick piece handler
 function dragPiece(event, square) {
+  // disallow touch opponents pieces
+  if (playerColor == 'red' && engine.getPiece(square) > 7) return;
+  if (playerColor == 'black' && engine.getPiece(square) < 8) return;
+    
   userSource = square;
   highlightMoves(square);
 }
@@ -208,7 +212,7 @@ function dropPiece(event, square) {
     userTime = Date.now() - userTime;
     document.getElementById(square).style.backgroundColor = SELECT_COLOR;
     playSound(valid);
-    updatePgn();
+    //updatePgn();
   }
   
   event.preventDefault();
@@ -230,6 +234,10 @@ function tapPiece(square) {
   var clickSquare = parseInt(square, 10)
   
   if(!clickLock && engine.getPiece(clickSquare)) {      
+    // disallow touch opponents pieces
+    if (playerColor == 'red' && engine.getPiece(clickSquare) > 7) return;
+    if (playerColor == 'black' && engine.getPiece(clickSquare) < 8) return;
+
     userSource = clickSquare;
     clickLock ^= 1;
   } else if(clickLock) {      
@@ -243,7 +251,7 @@ function tapPiece(square) {
     if (engine.getPiece(square) && valid) {
       document.getElementById(square).style.backgroundColor = SELECT_COLOR;
       playSound(valid);
-      updatePgn();
+      //updatePgn();
     }
 
     if (valid) setTimeout(function() {
@@ -323,7 +331,17 @@ function sendMove(move) {
   
   // send move to the server
   $.post( "/board", {gameId: gameId, move: move, side: playerColor}, function(response) {
-    console.log('UDP POST response:', response)
+    console.log('UDP POST response:', response);
+    
+    if (engine.generateLegalMoves().length == 0) {
+      gameResult = (engine.getSide() ? '1-0' : '0-1') + ' mate';
+      
+      // is game over ?
+      if (playerColor == 'red' && gameResult == '1-0 mate') alert('You win!');
+      if (playerColor == 'red' && gameResult == '0-1 mate') alert('You lose!');
+      if (playerColor == 'black' && gameResult == '0-1 mate') alert('You win!');
+      if (playerColor == 'black' && gameResult == '1-0 mate') alert('You lose!');
+    }
   });
 }
 
@@ -513,7 +531,7 @@ function newGame() {
   allowBook = 1;
   engine.setBoard(engine.START_FEN);
   drawBoard();
-  document.getElementById('pgn').value = '';
+  //document.getElementById('pgn').value = '';
   repetitions = 0;
 }
 
@@ -528,8 +546,8 @@ function newGame() {
 newGame();
 //setBot('Wukong');
 
-document.getElementById('xiangqiboard').style.disabled = true;
-document.getElementById('pgn').value = 'Waiting for opponent to connect...';
+//document.getElementById('xiangqiboard').style.disabled = true;
+//document.getElementById('pgn').value = 'Waiting for opponent to connect...';
 
 // extract gameId and side to move from currrent URL
 let gameId = window.location.href.split('board/')[1].split('?')[0];
@@ -547,13 +565,31 @@ $.post( "/board", {gameId: gameId, side: (flip ? 'black' : 'red'), move: 'connec
   function receiveMove() {
       $.get('/board?gameId=' + gameId + '&side=none&move=get', function(response) {
         let parseResponse = JSON.parse(response);
-        console.log('UDP GET response:', parseResponse)
+        console.log('UDP GET response:', parseResponse);
+        if (parseResponse.red == false && parseResponse.red == false) {
+          window.location.href = '/';
+          alert('Opponent has disconnected');
+        }
         try {
           let lastMove = parseResponse.moves[parseResponse.moves.length - 1];
           let oldMoveStackLength = engine.moveStack().length;
           engine.loadMoves(engine.moveToString(lastMove));
           let newMoveStackLength = engine.moveStack().length;
-          if (newMoveStackLength > oldMoveStackLength) drawBoard();
+          if (newMoveStackLength > oldMoveStackLength) {
+            drawBoard();
+            document.getElementById(engine.getTargetSquare(lastMove)).style.backgroundColor = SELECT_COLOR;
+            playSound(lastMove);
+            
+            if (engine.generateLegalMoves().length == 0) {
+              gameResult = (engine.getSide() ? '1-0' : '0-1') + ' mate';
+              
+              // is game over ?
+              if (playerColor == 'red' && gameResult == '1-0 mate') alert('You win!');
+              if (playerColor == 'red' && gameResult == '0-1 mate') alert('You lose!');
+              if (playerColor == 'black' && gameResult == '0-1 mate') alert('You win!');
+              if (playerColor == 'black' && gameResult == '1-0 mate') alert('You lose!');
+            }
+          }
         } catch(e) {console.log('error updating move:', e)}
       });
       setTimeout(receiveMove, interval);
@@ -561,7 +597,13 @@ $.post( "/board", {gameId: gameId, side: (flip ? 'black' : 'red'), move: 'connec
   setTimeout(receiveMove, interval);
 });
 
-
+// disconnect when leave
+window.addEventListener('beforeunload', (event) => {
+  // send move to the server
+  $.post( "/board", {gameId: gameId, move: 'disconnect', side: playerColor}, function(response) {
+    console.log('UDP POST response:', response)
+  });
+});
 
 
 

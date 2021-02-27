@@ -21,7 +21,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def new_game():
-    return 'start new game/join to game'
+    return render_template('lobby.html');
     
 @app.route('/board/<string:id>')
 def board(id):

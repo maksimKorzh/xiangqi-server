@@ -52,6 +52,13 @@ while True:
     
     if client_data['move'] == 'connect':
         game[client_data['side']] = True
+    elif client_data['move'] == 'disconnect':
+        boards[int(client_data['gameId']) - 1] = {
+            'id': int(client_data['gameId']),
+            'red': False,      # not "connected"
+            'black': False,    # not "connected"
+            'moves': []
+        }
     elif client_data['move'] != 'get':
         game['moves'].append(int(client_data['move']))
         print('got move from UI')
